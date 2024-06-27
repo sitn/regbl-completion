@@ -2,6 +2,8 @@ import os, csv
 from parameters import *
 from src.utils import *
 
+MAX_SHAPE_CHANGED = 0.5
+
 def deduce():
     print(f"Exporting results to {OUTPUT_FILE}")
     with open(OUTPUT_FILE, mode='w', newline='') as csv_file:
@@ -19,7 +21,6 @@ def deduce():
 
             previous_year = 0
             previous_state = 0
-            previous_shape_changed = False
             first_year = int(lines[-1].split()[0])
 
             detected_year   = 9999
@@ -27,14 +28,13 @@ def deduce():
 
             notes = []
             changes_counter = 0
-            shape_changed = False
 
             i=0
             for line in lines:
                 year, state, x, y, area, shape_change = [to_int_or_float(x) for x in line.split()]
-                shape_changed = shape_change > 0.3
 
-                if (previous_state == 0 and state == 1) or (state == 1 and previous_shape_changed and not shape_changed) :
+                # TODO : To consider, if the shape changes, we assume that the building year was after the change happened
+                if previous_state == 0 and state == 1 :
                     detected_year = year
                     last_not_detected_year = previous_year
                 
@@ -44,13 +44,14 @@ def deduce():
 
                 previous_state = state
                 previous_year  = year
-                previous_shape_changed = shape_changed
                 i+=1
 
             shape_changed = False
             for line in lines:
                 year, state, x, y, area, shape_change = [to_int_or_float(x) for x in line.split()]
-                if shape_change > 0.3 and year != first_year and not last_not_detected_year <= year <= detected_year :
+                # TODO : We have to check this condition
+                #if shape_change > 0.3 and year != first_year and not last_not_detected_year <= year <= detected_year :
+                if shape_change > MAX_SHAPE_CHANGED and year != first_year :
                     shape_changed = True
 
             if shape_changed:

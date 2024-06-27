@@ -1,59 +1,44 @@
 import cv2, os
 import numpy as np
-
 from parameters import *
 from src.utils import *
 
-CROSS_LENGTH = 29
-REGBL_CROSS = [
-    [-3, 0], [-2, -2], [-2, -1], [-2, 0], [-2, 1], [-2, 2],
-    [-1, -2], [-1, -1], [-1, 0], [-1, 1], [-1, 2],
-    [0, -3], [0, -2], [0, -1], [0, 0], [0, 1], [0, 2], [0, 3],
-    [1, -2], [1, -1], [1, 0], [1, 1], [1, 2],
-    [2, -2], [2, -1], [2, 0], [2, 1], [2, 2],
-    [3, 0]
-]
+SEARCH_RADIUS = 4
 
-def lc_connect_get(image, mask, lc_x, lc_y, lc_erase):
-    lc_connect = []
-    lc_head = 0
+def get_connected(image, mask, x, y, erase):
+    connected = []
+    head = 0
     neighbors = [(+1, +0), (-1, +0), (+0, +1), (+0, -1)]
-    lc_connect.append([lc_x, lc_y])
-    mask[lc_y, lc_x] = 255
-    while lc_head < len(lc_connect) and len(lc_connect) < 5000:
+    connected.append([x, y])
+    mask[y, x] = 255
+    while head < len(connected) and len(connected) < 5000:
         for lc_i in range(len(neighbors)):
-            lc_u = lc_connect[lc_head][0] + neighbors[lc_i][0]
-            lc_v = lc_connect[lc_head][1] + neighbors[lc_i][1]
+            lc_u = connected[head][0] + neighbors[lc_i][0]
+            lc_v = connected[head][1] + neighbors[lc_i][1]
 
             if lc_u < 0 or lc_v < 0 or lc_u >= image.shape[1] or lc_v >= image.shape[0]:
                 continue
 
             if mask[lc_v, lc_u] == 0:
                 if image[lc_v, lc_u] == 0:
-                    lc_connect.append([lc_u, lc_v])
+                    connected.append([lc_u, lc_v])
                     mask[lc_v, lc_u] = 255
+        head += 1
 
-        lc_head += 1
+    if erase:
+        for i in range(len(connected)):
+            mask[connected[i][1], connected[i][0]] = 0
+    return connected
 
-    if lc_erase:
-        for i in range(len(lc_connect)):
-            mask[lc_connect[i][1], lc_connect[i][0]] = 0
-
-    return lc_connect
-
-def regbl_detect_on_map(map, x, y):
-    for i in range(CROSS_LENGTH):
-        u = x[0] + REGBL_CROSS[i][0]
-        v = y[0] + REGBL_CROSS[i][1]
-
-        if u < 0 or v < 0 or u >= map.shape[1] or v >= map.shape[0]:
-            continue
-
-        if map[v, u] == 0:
-            x[0] = u
-            y[0] = v
-            return True
-    return False
+def detect_on_map(map, center):
+    for x in range(-SEARCH_RADIUS, SEARCH_RADIUS+1):
+        for y in range(-SEARCH_RADIUS, SEARCH_RADIUS+1):
+            if x*x + y*y <= SEARCH_RADIUS**2:
+                u = center[0] + x
+                v = center[1] + y
+                if 0 <= u < map.shape[1] and 0 <= v < map.shape[0] and map[v, u] == 0:
+                    return (u,v)
+    return None
 
 # Returns the ratio of pixels that changed from the previous call
 SIDE = 10
@@ -74,7 +59,6 @@ def shape_ratio_changed(map, x, y, egid, side=10):
             if SHAPES[egid][cur_x, cur_y] != map[map_y, map_x] :
                 count_different += 1
             SHAPES[egid][cur_x, cur_y] = map[map_y, map_x]
-    
     return count_different / (SIDE*SIDE)
 
 def regbl_detect(map, track, mask, year):
@@ -90,14 +74,16 @@ def regbl_detect(map, track, mask, year):
                         line_split = line.split(" ")
                         found_x = int(line_split[0])
                         found_y = int(line_split[1])
-                        if regbl_detect_on_map(map, [found_x], [found_y]):
+                        found_pos = detect_on_map(map, (found_x, found_y))
+                        if found_pos != None:
                             found = True
-                            regbl_color = (0, 255, 0, 255)
+                            found_x, found_y = found_pos
+                            color = (0, 255, 0, 255)
                         else:
-                            regbl_color = (0, 0, 255, 255)
+                            color = (0, 0, 255, 255)
 
-                        cv2.line(track, (found_x, found_y - 3), (found_x, found_y + 3), regbl_color)
-                        cv2.line(track, (found_x - 3, found_y), (found_x + 3, found_y), regbl_color)
+                        cv2.line(track, (found_x, found_y - 3), (found_x, found_y + 3), color)
+                        cv2.line(track, (found_x - 3, found_y), (found_x + 3, found_y), color)
 
                         total += 1
                     else:
@@ -106,12 +92,11 @@ def regbl_detect(map, track, mask, year):
                 if total == 0:
                     fatal_error("Unable to import position from position file")
                 
-                area = len(lc_connect_get(map, mask, found_x, found_y, True)) if found else 0
+                area = len(get_connected(map, mask, found_x, found_y, True)) if found else 0
                 shape_changed = shape_ratio_changed(map, found_x, found_y, egid)
 
                 with open(os.path.join(DETECT_OUTPUT_PATH, egid), 'a') as f:
                     f.write(f"{year} {'1' if found else '0'} {found_x} {found_y} {area} {shape_changed}\n")
-
 
 def detect():
     regbl_list = []
@@ -138,5 +123,4 @@ def detect():
         track = np.zeros((map.shape[0], map.shape[1], 4), dtype=np.uint8)
 
         regbl_detect(cv2.flip(map, 0), track, mask, current_year)
-
         cv2.imwrite(os.path.join(PROCESSING_FOLDER, FRAME_OUTPUT_PATH+current_year+".tif"), cv2.flip(track, 0))

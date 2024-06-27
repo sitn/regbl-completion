@@ -5,6 +5,7 @@ from src.utils import *
 
 CROP_SIZE = 50
 FONT = cv2.FONT_HERSHEY_PLAIN
+BAND_HEIGHT = 18
 
 WHITE = (255, 255, 255)
 GREY = (64, 64, 64)
@@ -12,8 +13,9 @@ PURPLE = (224, 16, 224)
 FOUND_COLOR = (98, 142, 22)
 NOT_FOUND_COLOR = (78, 66, 192)
 
-def draw_border(img, x, y, detected):
+def draw_border(img, center, detected):
     margin = int(CROP_SIZE * 0.75)
+    x, y = center
     height, width, depth = img.shape
     color = FOUND_COLOR if detected else NOT_FOUND_COLOR
     cv2.rectangle(img, (0, -1), (width, height + 2), color, 1)
@@ -22,60 +24,54 @@ def draw_border(img, x, y, detected):
     cv2.line(img, (x, height), (x, y + margin), color)
     cv2.line(img, (width, y),  (x + margin, y), color)
 
+def draw_building_marker(img, center):
+    cv2.circle(img, center, 1, PURPLE, cv2.FILLED)
 
-def tracker_building(img, regbl_cnx, regbl_cny, file):
-    pos_x, pos_y = map(float, file.readline().split())
-    cv2.circle(img, (regbl_cnx, regbl_cny), 1, PURPLE, cv2.FILLED)
-    file.seek(0)
-    for line in file:
-        regbl_ux, regbl_uy = map(float, line.split())
-        regbl_ux -= pos_x
-        regbl_uy -= pos_y
-        regbl_ux = regbl_cnx + round(regbl_ux)
-        regbl_uy = regbl_cny - round(regbl_uy)
-        cv2.circle(img, (int(regbl_ux), int(regbl_uy)), 1, PURPLE, cv2.FILLED)
-        cv2.line(img, (regbl_cnx, regbl_cny), (int(regbl_ux), int(regbl_uy)), PURPLE)
+def draw_surface(img, center, surface):
+    if surface > 0 : cv2.circle(img, center, int(math.sqrt(surface / math.pi)), PURPLE)
 
-
-def draw_surface(img, x, y, surface):
-    if surface > 0:
-        cv2.circle(img, (x, y), int(math.sqrt(surface / math.pi)), PURPLE)
-
-
-def draw_detect_cross(img, x, y, size):
-    x, y = int(x), int(y)
+def draw_detect_cross(img, center, offset, size):
+    x, y = int(center[0]+offset[0]), int(center[1]+offset[1])
     cv2.circle(img, (x, y), int(math.sqrt(size / math.pi)), FOUND_COLOR)
     cv2.line(img, (x, y-3), (x, y+3), FOUND_COLOR)
     cv2.line(img, (x-3, y), (x+3, y), FOUND_COLOR)
 
-
-def tracker_timeline(width, year, detect):
-    result = np.full((18, width, 3), FOUND_COLOR if detect else NOT_FOUND_COLOR, dtype=np.uint8)
-    cv2.putText(result, year, (40 + (width - (CROP_SIZE * 2)) // 2, 14), FONT, 1, WHITE)
+def draw_year(year, detect):
+    result = np.full((BAND_HEIGHT, CROP_SIZE*2, 3), FOUND_COLOR if detect else NOT_FOUND_COLOR, dtype=np.uint8)
+    cv2.putText(result, year, (40 , 14), FONT, 1, WHITE)
     return result
 
 
-def tracker_detection(width, year, hbound):
-    regbl_color = FOUND_COLOR if int(year) >= int(hbound) else NOT_FOUND_COLOR
-    return np.full((18, width, 3), regbl_color, dtype=np.uint8)
+def draw_bottom_band(year, year_min):
+    color = FOUND_COLOR if int(year) >= year_min else NOT_FOUND_COLOR
+    return np.full((BAND_HEIGHT, CROP_SIZE*2, 3), color, dtype=np.uint8)
 
 
-def tracker_reference(width, egid, ref_year, udeduce, ldeduce):
+def draw_title(width, egid, ref_year, year_min, year_max):
     if ref_year == "NO_REF":
-        regbl_color = GREY
+        color = GREY
     else:
-        regbl_color = FOUND_COLOR if int(udeduce) >= int(ref_year) > int(ldeduce) else NOT_FOUND_COLOR
-    result = np.full((18, width, 3), regbl_color, dtype=np.uint8)
-    cv2.putText(result, f"{egid} {ldeduce}-{udeduce} {ref_year}", (0, 14), FONT, 1, WHITE)
+        color = FOUND_COLOR if year_min >= int(ref_year) > year_max else NOT_FOUND_COLOR
+    result = np.full((BAND_HEIGHT, width, 3), color, dtype=np.uint8)
+    cv2.putText(result, f"{egid} {year_max}-{year_min} {ref_year}", (0, 14), FONT, 1, WHITE)
     return result
 
+def draw(frame, center, isDetected, area, detect_size, delta_position_detected):
+    draw_border(frame, center, isDetected)
+    draw_building_marker(frame, center)
+    draw_surface(frame, center, area)
+    if isDetected :
+        draw_detect_cross(frame, center, delta_position_detected, detect_size)
+
+def stack_frame(frame, stack):
+    return frame if stack is None else np.hstack((frame, stack))
 
 def track(egid):
     tiles_list = list(map(lambda x: x.split(" "), read_file(TILES_LIST_PATH)))
 
     try:
         with open(os.path.join(DEDUCE_OUTPUT_PATH, egid), 'r') as f:
-            regbl_udeduce, regbl_ldeduce = f.readline().split()
+            deduce_year_min, deduce_year_max = map(int, f.readline().split())
     except FileNotFoundError:
         fatal_error(f"Unable to import building deduced range")
 
@@ -91,89 +87,83 @@ def track(egid):
     except FileNotFoundError:
         fatal_error(f"Unable to locate deduction file")
 
-    regbl_ftln = None
-    regbl_stln = None
-    regbl_alin = None
-    regbl_adet = None
+    frame_input_img = None
+    frame_processed_img = None
+    years_band_img = None
+    bottom_band_img = None
 
     for index, line in enumerate(detect_content):
-        year, detect_flag, regbl_detx, regbl_dety, detect_size, shape_factor = line.split()
+        year, detect_flag, detected_x, detected_y, detect_size, shape_factor = line.split()
         detected = detect_flag == '1'
-        regbl_detx = float(regbl_detx)
-        regbl_dety = float(regbl_dety)
+        detected_x = float(detected_x)
+        detected_y = float(detected_y)
         detect_size = float(detect_size)
         shape_factor = float(shape_factor)
 
-        frame_width = int(tiles_list[index][5])
-        frame_height = int(tiles_list[index][6])
+        frame_shape = (int(tiles_list[index][5]), int(tiles_list[index][6]))
+
+        scaled_area = area * (frame_shape[0] / (float(tiles_list[index][2]) - float(tiles_list[index][1])))
 
         try:
             with open(os.path.join(POSITION_OUTPUT_PATH, year, egid), 'r') as f:
                 pos_x, pos_y = map(int, f.readline().split())
         except FileNotFoundError:
             fatal_error(f"Unable to access position file for year {year} and egid {egid}")
-
-        scale_factor = frame_width / (float(tiles_list[index][2]) - float(tiles_list[index][1]))
-        pos_y = frame_height - pos_y - 1
-        regbl_dety = frame_height - regbl_dety - 1
+        
+        pos_y = frame_shape[1] - pos_y - 1
+        detected_y = frame_shape[1] - detected_y - 1
 
         crop_minx = pos_x - CROP_SIZE
         crop_miny = pos_y - CROP_SIZE
+        crop_maxx = pos_x + CROP_SIZE
+        crop_maxy = pos_y + CROP_SIZE
 
-        regbl_cnx = CROP_SIZE
-        regbl_cny = CROP_SIZE
+        local_center = [CROP_SIZE, CROP_SIZE]
 
         if crop_minx < 0:
-            regbl_cnx += crop_minx
+            local_center[0] += crop_minx
             crop_minx = 0
+            crop_maxx = 2*CROP_SIZE
+        elif crop_maxx >= frame_shape[0]:
+            local_center[0] += frame_shape[0]-crop_maxx
+            crop_minx = frame_shape[0]-2*CROP_SIZE
+            crop_maxx = frame_shape[0]
+
         if crop_miny < 0:
-            regbl_cny += crop_miny
+            local_center[1] += crop_miny
             crop_miny = 0
+            crop_maxy = 2*CROP_SIZE
+        elif crop_maxy >= frame_shape[1]:
+            local_center[1] += frame_shape[1]-crop_maxy
+            crop_miny = frame_shape[1]-2*CROP_SIZE
+            crop_maxy = frame_shape[1]
 
-        crop_maxx = min(pos_x+CROP_SIZE, frame_width)
-        crop_maxy = min(pos_y+CROP_SIZE, frame_height)
+        if crop_maxx - crop_minx != 100 or crop_maxy - crop_miny != 100 :
+            print("ERROR : ")
+            print(f"Width : {crop_maxx - crop_minx}")
+            print(f"Height : {crop_maxy - crop_miny}")
 
-        frame = cv2.imread(os.path.join(INPUT_FRAMES_FOLDER, f"{year}.tif"))
-        if frame is None:
+
+        delta_position_detected = (detected_x - pos_x, detected_y - pos_y)
+
+        frame_input = cv2.imread(os.path.join(INPUT_FRAMES_FOLDER, f"{year}.tif"))
+        if frame_input is None:
             fatal_error(f"Unable to import original map of {year}")
 
-
-
-        frame_cropped = frame[crop_miny:crop_maxy, crop_minx:crop_maxx]
-        draw_border(frame_cropped, regbl_cnx, regbl_cny, detected)
-        with open(os.path.join(POSITION_OUTPUT_PATH, year, egid), 'r') as f:
-            tracker_building(frame_cropped, regbl_cnx, regbl_cny, f)
-        draw_surface(frame_cropped, regbl_cnx, regbl_cny, area * scale_factor)
-        if detected :
-            draw_detect_cross(frame_cropped, regbl_cnx + (regbl_detx - pos_x), regbl_cny + (regbl_dety - pos_y), detect_size)
-
-
-
-        regbl_ftln = frame_cropped if regbl_ftln is None else np.hstack((frame_cropped, regbl_ftln))
-
-        frame = cv2.imread(os.path.join(PROCESSED_FRAME_FOLDER, f"{year}.tif"))
-        if frame is None:
+        frame_processed = cv2.imread(os.path.join(PROCESSED_FRAME_FOLDER, f"{year}.tif"))
+        if frame_processed is None:
             fatal_error(f"Unable to import segmented map {year}")
 
+        input_cropped = frame_input[crop_miny:crop_maxy, crop_minx:crop_maxx]
+        draw(input_cropped, local_center, detected, scaled_area, detect_size, delta_position_detected)
+        frame_input_img = stack_frame(input_cropped, frame_input_img)
 
+        processed_cropped = frame_processed[crop_miny:crop_maxy, crop_minx:crop_maxx]
+        draw(processed_cropped, local_center, detected, scaled_area, detect_size, delta_position_detected)
+        frame_processed_img = stack_frame(processed_cropped, frame_processed_img)
 
-        frame_cropped = frame[crop_miny:crop_maxy, crop_minx:crop_maxx]
-        draw_border(frame_cropped, regbl_cnx, regbl_cny, detected)
-        with open(os.path.join(POSITION_OUTPUT_PATH, year, egid), 'r') as f:
-            tracker_building(frame_cropped, regbl_cnx, regbl_cny, f)
-        draw_surface(frame_cropped, regbl_cnx, regbl_cny, area * scale_factor)
-        if detected : 
-            draw_detect_cross(frame_cropped, regbl_cnx + (regbl_detx - pos_x), regbl_cny + (regbl_dety - pos_y), detect_size)
-
-
-
-        regbl_stln = frame_cropped if regbl_stln is None else np.hstack((frame_cropped, regbl_stln))
-
-        frame_cropped = tracker_timeline(frame_cropped.shape[1], year, detected)
-        regbl_alin = frame_cropped if regbl_alin is None else np.hstack((frame_cropped, regbl_alin))
-
-        frame_cropped = tracker_detection(frame_cropped.shape[1], year, regbl_udeduce)
-        regbl_adet = frame_cropped if regbl_adet is None else np.hstack((frame_cropped, regbl_adet))
+        years_band_img = stack_frame(draw_year(year, detected), years_band_img)
+        bottom_band_img = stack_frame(draw_bottom_band(year, deduce_year_min), bottom_band_img)
 
     detect_content.close()
 
@@ -183,7 +173,6 @@ def track(egid):
     except FileNotFoundError:
         ref_year = "NO_REF"
 
-    regbl_aref = tracker_reference(regbl_ftln.shape[1], egid, ref_year, regbl_udeduce, regbl_ldeduce)
-    regbl_aref = np.vstack((regbl_aref, regbl_ftln, regbl_alin, regbl_stln, regbl_adet))
-
-    cv2.imwrite(os.path.join(OUTPUT_FOLDER, f"{egid}.png"), regbl_aref)
+    title_img = draw_title(frame_input_img.shape[1], egid, ref_year, deduce_year_min, deduce_year_max)
+    final_img = np.vstack((title_img, frame_input_img, years_band_img, frame_processed_img, bottom_band_img))
+    cv2.imwrite(os.path.join(OUTPUT_FOLDER, f"{egid}.png"), final_img)

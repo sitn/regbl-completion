@@ -109,7 +109,7 @@ def test(truth_file, output_file, min_year, max_year):
 
 def main():
     print_title("RegBL Completion - Starting")
-
+    """
     print_subtitle(f"Removing folder {PROCESSING_FOLDER}")
     shutil.rmtree(PROCESSING_FOLDER, ignore_errors=True)
 
@@ -140,20 +140,21 @@ def main():
 
     print_title("Bootstrapping")
     bootstrap()
-
+    
     print_title("Detection")
     detect()
-    
+    """
     print_title("Deduction")
     deduce()
 
     print_title("Test")
     test(GROUND_TRUTH, OUTPUT_FILE, 1956, 2021)
-
+    """
     print_title("Tracking")
     for egid in os.listdir(EGID_OUTPUT_PATH):
         print(f"Processing EGID {egid}")
         track(egid)
+    """
 
     print("Finished")
 

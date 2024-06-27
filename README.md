@@ -2,7 +2,7 @@
 Automated building construction year detection using historical swiss maps
 
 This project is a python translation of https://github.com/swiss-territorial-data-lab/regbl-poc by the [Swiss Territorial Data Lab](https://www.stdl.ch/).
-We changed some functionalities, especially to make the code more modular and detect smaller buildings.
+We changed some functionalities, especially to make the code faster and more modular, and detect smaller buildings.
 
 # Requirements / Installation
 1. Install the latests version of Python
