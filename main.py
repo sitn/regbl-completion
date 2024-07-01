@@ -88,7 +88,7 @@ def test(truth_file, output_file, min_year, max_year):
                     build_before_first_year += 1
                 if estimated_built_max > max_year:
                     build_after_last_year += 1
-                if estimated_built_min >= min_year and estimated_built_max <= max_year and output_row[3] == "":
+                if output_row[3] == "":
                     if estimated_built_min <= built_year <= estimated_built_max:
                         correct_filtered += 1
                     else:
@@ -146,7 +146,7 @@ def main():
     """
     print_title("Deduction")
     deduce()
-
+    
     print_title("Test")
     test(GROUND_TRUTH, OUTPUT_FILE, 1956, 2021)
     """
@@ -155,6 +155,7 @@ def main():
         print(f"Processing EGID {egid}")
         track(egid)
     """
+    
 
     print("Finished")
 

@@ -24,7 +24,7 @@ def deduce():
             first_year = int(lines[-1].split()[0])
 
             detected_year   = 9999
-            last_not_detected_year = 0
+            last_not_detected_year = 2021
 
             notes = []
             changes_counter = 0
