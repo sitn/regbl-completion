@@ -2,7 +2,7 @@ import os
 from parameters import *
 from src.utils import *
 
-DELIMITER = '\t'
+DELIMITER = ';'
 
 def detect_database_header(line, target):
     try:

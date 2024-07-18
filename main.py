@@ -17,7 +17,7 @@ def write_tiles_list(year, tfw_path):
         file_out.write(f'{year} {minX} {maxX} {minY} {maxY} {FRAMES_SIZE[0]} {FRAMES_SIZE[1]}\n')
 
 
-def initialize(input_folders):
+def initialize(input_folders, tile_id):
     print_subtitle("Extracting images from raw data...")
     for folder in input_folders:
         for filename in os.listdir(folder):
@@ -27,7 +27,7 @@ def initialize(input_folders):
                 filename_year = filename.split('_')[-2]
                 filename_tile = filename.split('_')[-3]
 
-                if filename_tile == TILE_TO_PROCESS :
+                if filename_tile == tile_id :
                     output_file = os.path.join(INPUT_FRAMES_FOLDER, filename_year+".tif")
                     print(f"Copying and resizing year {filename_year} .tif / .tfw")
                     shutil.copy(filepath, output_file)
@@ -109,53 +109,61 @@ def test(truth_file, output_file, min_year, max_year):
 
 def main():
     print_title("RegBL Completion - Starting")
-    """
-    print_subtitle(f"Removing folder {PROCESSING_FOLDER}")
-    shutil.rmtree(PROCESSING_FOLDER, ignore_errors=True)
 
-    create_folders([
-        INPUT_FRAMES_FOLDER, 
-        PROCESSING_FOLDER, 
-        PROCESSED_FRAME_FOLDER,
-        DETECT_OUTPUT_PATH, 
-        FRAME_OUTPUT_PATH, 
-        OUTPUT_FOLDER, 
-        DEDUCE_OUTPUT_PATH,
-        EGID_OUTPUT_PATH,
-        REFERENCE_OUTPUT_PATH,
-        SURFACE_OUTPUT_PATH
-    ])
+    for tile_id in TILES_TO_PROCESS :
+        print_title(f"Processing tile {tile_id}")
+    
+        print_subtitle(f"Removing folder {PROCESSING_FOLDER}")
+        shutil.rmtree(PROCESSING_FOLDER, ignore_errors=True)
 
-    print_title("Initializing")
-    initialize(INPUT_FOLDERS)
-    
-    print_title("Segmenting")
-    segment_paths = []
-    for file in os.listdir(INPUT_FRAMES_FOLDER):
-        if file.endswith(".tif"):
-            segment_paths.append( (os.path.join(INPUT_FRAMES_FOLDER, file), os.path.join(PROCESSED_FRAME_FOLDER, file)) )
-    with multiprocessing.Pool() as pool:
-        pool.starmap(segment, segment_paths)
+        output_folder = os.path.join(OUTPUT_FOLDER, tile_id)
+
+        create_folders([
+            INPUT_FRAMES_FOLDER, 
+            PROCESSING_FOLDER, 
+            PROCESSED_FRAME_FOLDER,
+            DETECT_OUTPUT_PATH, 
+            FRAME_OUTPUT_PATH, 
+            OUTPUT_FOLDER, 
+            DEDUCE_OUTPUT_PATH,
+            EGID_OUTPUT_PATH,
+            REFERENCE_OUTPUT_PATH,
+            SURFACE_OUTPUT_PATH,
+            output_folder
+        ])
+
+        print_title(f"Tile {tile_id} - Initializing")
+        initialize(INPUT_FOLDERS, tile_id)
+        
+        print_title(f"Tile {tile_id} - Segmenting")
+        segment_paths = []
+        for file in os.listdir(INPUT_FRAMES_FOLDER):
+            if file.endswith(".tif"):
+                segment_paths.append( (os.path.join(INPUT_FRAMES_FOLDER, file), os.path.join(PROCESSED_FRAME_FOLDER, file)) )
+        with multiprocessing.Pool() as pool:
+            pool.starmap(segment, segment_paths)
 
 
-    print_title("Bootstrapping")
-    bootstrap()
-    
-    print_title("Detection")
-    detect()
-    """
-    print_title("Deduction")
-    deduce()
-    
-    print_title("Test")
-    test(GROUND_TRUTH, OUTPUT_FILE, 1956, 2021)
-    """
-    print_title("Tracking")
-    for egid in os.listdir(EGID_OUTPUT_PATH):
-        print(f"Processing EGID {egid}")
-        track(egid)
-    """
-    
+        print_title(f"Tile {tile_id} - Bootstrapping")
+        bootstrap()
+        
+        print_title(f"Tile {tile_id} - Detection")
+        detect()
+
+        output_file = os.path.join(output_folder, "result.csv")
+        
+        print_title(f"Tile {tile_id} - Deduction")
+        deduce(output_file)
+        
+        
+        print_title(f"Tile {tile_id} - Test")
+        test(GROUND_TRUTH, output_file, 1956, 2021)
+        
+        
+        print_title(f"Tile {tile_id} - Tracking")
+        for egid in os.listdir(EGID_OUTPUT_PATH):
+            print(f"Processing EGID {egid}")
+            track(egid, output_folder)
 
     print("Finished")
 

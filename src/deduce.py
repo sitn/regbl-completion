@@ -4,9 +4,9 @@ from src.utils import *
 
 MAX_SHAPE_CHANGED = 0.5
 
-def deduce():
-    print(f"Exporting results to {OUTPUT_FILE}")
-    with open(OUTPUT_FILE, mode='w', newline='') as csv_file:
+def deduce(output_file):
+    print(f"Exporting results to {output_file}")
+    with open(output_file, mode='w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(['EGID', 'LAST_NOT_DETECTED', 'FIRST_DETECTED', 'NOTE'])
 

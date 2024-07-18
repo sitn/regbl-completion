@@ -81,10 +81,8 @@ def regbl_detect(map, track, mask, year):
                             color = (0, 255, 0, 255)
                         else:
                             color = (0, 0, 255, 255)
-
                         cv2.line(track, (found_x, found_y - 3), (found_x, found_y + 3), color)
                         cv2.line(track, (found_x - 3, found_y), (found_x + 3, found_y), color)
-
                         total += 1
                     else:
                         break

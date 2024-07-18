@@ -66,7 +66,7 @@ def draw(frame, center, isDetected, area, detect_size, delta_position_detected):
 def stack_frame(frame, stack):
     return frame if stack is None else np.hstack((frame, stack))
 
-def track(egid):
+def track(egid, output_folder):
     tiles_list = list(map(lambda x: x.split(" "), read_file(TILES_LIST_PATH)))
 
     try:
@@ -175,4 +175,4 @@ def track(egid):
 
     title_img = draw_title(frame_input_img.shape[1], egid, ref_year, deduce_year_min, deduce_year_max)
     final_img = np.vstack((title_img, frame_input_img, years_band_img, frame_processed_img, bottom_band_img))
-    cv2.imwrite(os.path.join(OUTPUT_FOLDER, f"{egid}.png"), final_img)
+    cv2.imwrite(os.path.join(output_folder, f"{egid}.png"), final_img)
