@@ -137,6 +137,7 @@ def main():
         
         print_title(f"Tile {tile_id} - Segmenting")
         segment_paths = []
+        # Executes the function segment() in parallel for each year
         for file in os.listdir(INPUT_FRAMES_FOLDER):
             if file.endswith(".tif"):
                 segment_paths.append( (os.path.join(INPUT_FRAMES_FOLDER, file), os.path.join(PROCESSED_FRAME_FOLDER, file)) )
@@ -157,7 +158,10 @@ def main():
         
         
         print_title(f"Tile {tile_id} - Test")
-        test(GROUND_TRUTH, output_file, 1956, 2021)
+        if GROUND_TRUTH != "":
+            test(GROUND_TRUTH, output_file, 1956, 2021)
+        else :
+            print(f"No ground truth provided, skipping test...")
         
         
         print_title(f"Tile {tile_id} - Tracking")

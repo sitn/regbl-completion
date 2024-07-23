@@ -1,17 +1,21 @@
 import os
 
+# List of folder where the national maps are location.
+# Maps will be search for in each folder.
 INPUT_FOLDERS = ['./data/LKGREL25', './data/PK25', './data/SMR25']
-"""
-TILES_TO_PROCESS = [
-    "1123", "1124", "1125",
-    "1143", "1144", "1145",
-    "1162", "1163", "1164", "1165",
-    "1182", "1183"
-]
-"""
+
+# List of tiles to process. Each tile will be process independently.
 TILES_TO_PROCESS = ["1164"]
+
+# Input file that contains columns EGID, GKODE, GKODN
 DATA_LOCATION = "./input/DATA_NE.csv"
+
+# Ground truth to evaluate the detection. Must be similar to the file in DATA_LOCATION
+# with an additional GBAUJ column
 GROUND_TRUTH = "./test/GBAUP_TEST_DATA.csv"
+
+# Folder where the result will be written. One subfolder will be created per tile.
+OUTPUT_FOLDER = "./output/"
 
 FRAMES_SIZE = (7000, 4800)
 PROCESSING_FOLDER = "./regbl_process/"
@@ -28,5 +32,3 @@ FRAME_OUTPUT_PATH     = os.path.join(PROCESSING_FOLDER, "output/frame/")
 DEDUCE_OUTPUT_PATH    = os.path.join(PROCESSING_FOLDER, "output/deduce/")
 SURFACE_OUTPUT_PATH   = os.path.join(PROCESSING_FOLDER, "output/surface/")
 REFERENCE_OUTPUT_PATH = os.path.join(PROCESSING_FOLDER, "output/reference/")
-
-OUTPUT_FOLDER = "./output/"
