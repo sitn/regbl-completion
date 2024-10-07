@@ -10,12 +10,16 @@ TILES_TO_PROCESS = ["1164"]
 # Input file that contains columns EGID, GKODE, GKODN
 DATA_LOCATION = "./input/DATA_NE.csv"
 
-# Ground truth to evaluate the detection. Must be similar to the file in DATA_LOCATION
-# with an additional GBAUJ column
+# Ground truth to evaluate the detection. 
+# Must be similar to the file in DATA_LOCATION with an additional GBAUJ column
+# An empty string will disable the test step
 GROUND_TRUTH = "./test/GBAUP_TEST_DATA.csv"
 
 # Folder where the result will be written. One subfolder will be created per tile.
 OUTPUT_FOLDER = "./output/"
+
+TEST_MIN_YEAR = 1956 # First year for which data is available
+TEST_MAX_YEAR = 2021 # Last year for which data is available
 
 FRAMES_SIZE = (7000, 4800)
 PROCESSING_FOLDER = "./regbl_process/"

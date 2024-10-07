@@ -25,7 +25,7 @@ It is a CSV file with at least the following columns (other columns are ignored)
 Complete the configuration file `parameters.py` following your needs. 
 Here are the main parameters and their meaning:
   - `INPUT_FOLDERS` : List of folders in which the map tiles (.tif files) and their georeferencing (.tfw) are located.
-  - `TILE_TO_PROCESS` : List of tiles to process. Process and generate the output of all these tiles one by one.
+  - `TILE_TO_PROCESS` : List of tiles ID (swiss national map) to process. Process and generate the output of all these tiles one by one.
   - `DATA_LOCATION` : Path to the input file (CSV file containing the columns EGID, GKODE, GKODN)
   - `GROUND_TRUTH` : CSV file similar to the file in DATA_LOCATION, but with the added column "GBAUJ" that indicates the building construction year.
   - `OUTPUT_FOLDER` : folder where the output CSV file and the tracking images will be generated. The script will create one folder per tiles to process in this folder.
@@ -45,6 +45,8 @@ The script go through 7 steps for each tile :
 5. Deduction : Read the output from the previous step and outputs a construction period. Also detects if the building significantly changed shape or if the detection oscillates between years. Outputs in the output folder a CSV file with all the results.
 6. Test : If a ground truth is provided, compare the results with it
 7. Track : Generates, in the output folder, for all buildings, an image that displays map extracts with detection results. Useful for manual errors inspections.
+
+The file `main.py` runs all these steps. Each of them can be disabled / run alone by editing `main.py`.
 
 # Output
 

@@ -119,16 +119,9 @@ def main():
         output_folder = os.path.join(OUTPUT_FOLDER, tile_id)
 
         create_folders([
-            INPUT_FRAMES_FOLDER, 
-            PROCESSING_FOLDER, 
-            PROCESSED_FRAME_FOLDER,
-            DETECT_OUTPUT_PATH, 
-            FRAME_OUTPUT_PATH, 
-            OUTPUT_FOLDER, 
-            DEDUCE_OUTPUT_PATH,
-            EGID_OUTPUT_PATH,
-            REFERENCE_OUTPUT_PATH,
-            SURFACE_OUTPUT_PATH,
+            INPUT_FRAMES_FOLDER, PROCESSING_FOLDER, PROCESSED_FRAME_FOLDER,
+            DETECT_OUTPUT_PATH, FRAME_OUTPUT_PATH, OUTPUT_FOLDER, 
+            DEDUCE_OUTPUT_PATH, EGID_OUTPUT_PATH, REFERENCE_OUTPUT_PATH, SURFACE_OUTPUT_PATH,
             output_folder
         ])
 
@@ -159,7 +152,7 @@ def main():
         
         print_title(f"Tile {tile_id} - Test")
         if GROUND_TRUTH != "":
-            test(GROUND_TRUTH, output_file, 1956, 2021)
+            test(GROUND_TRUTH, output_file, TEST_MIN_YEAR, TEST_MAX_YEAR)
         else :
             print(f"No ground truth provided, skipping test...")
         
