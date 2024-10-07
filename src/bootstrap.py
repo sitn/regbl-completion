@@ -69,7 +69,7 @@ def bootstrap_extract(tiles_list):
         fatal_error(f"Unable to open GEB database in {DATA_LOCATION}")
 
 
-def bootstrap(EIN_path=None):
+def bootstrap():
     tiles_list = list(map( lambda line : line.split(' '), read_file(TILES_LIST_PATH)))
     if not tiles_list:
         fatal_error(f"Unable to read {TILES_LIST_PATH}")
@@ -78,48 +78,3 @@ def bootstrap(EIN_path=None):
         os.makedirs(os.path.join(POSITION_OUTPUT_PATH, line[0]), exist_ok=True)
 
     bootstrap_extract(tiles_list)
-
-    #if EIN_path:
-    #    bootstrap_entries(EIN_path, EGID_OUTPUT_PATH, tiles_list)
-    #else:
-    #    print("Warning: EIN database not provided. Ignoring building entries")
-
-
-"""
-def bootstrap_entries(ein_path, export_egid, tiles_list):
-    try:
-        with open(ein_path, 'r') as ein_stream:
-            regbl_head = ein_stream.readline().strip()
-            regbl_EGID = detect_database_header(regbl_head, "EGID")
-            regbl_DKODE = detect_database_header(regbl_head, "DKODE")
-            regbl_DKODN = detect_database_header(regbl_head, "DKODN")
-
-            if regbl_EGID < 0 or regbl_DKODE < 0 or regbl_DKODN < 0:
-                print("error: unable to locate necessary fields in EIN database", file=sys.stderr)
-                sys.exit(1)
-
-            for regbl_line in ein_stream:
-                regbl_line = regbl_line.strip()
-
-                regbl_x = float(detect_database_entry(regbl_line, regbl_DKODE))
-                regbl_y = float(detect_database_entry(regbl_line, regbl_DKODN))
-                regbl_token = detect_database_entry(regbl_line, regbl_EGID)
-
-                if os.path.isfile(os.path.join(export_egid, regbl_token)):
-                    regbl_transfer = []
-
-                    for regbl_parse in tiles_list:
-                        regbl_u = round_coordinate(regbl_x, float(regbl_parse[1]), float(regbl_parse[2]), float(regbl_parse[5]))
-                        regbl_v = round_coordinate(regbl_y, float(regbl_parse[3]), float(regbl_parse[4]), float(regbl_parse[6]))
-
-                        if 0 <= regbl_u < int(regbl_parse[5]) and 0 <= regbl_v < int(regbl_parse[6]):
-                            regbl_transfer.append([regbl_u, regbl_v])
-
-                    if len(regbl_transfer) == len(tiles_list):
-                        for regbl_parse in tiles_list:
-                            output_path = os.path.join(POSITION_OUTPUT_PATH, regbl_parse[0], regbl_token)
-                            with open(output_path, 'a') as output:
-                                output.write(f"{regbl_transfer[regbl_parse][0]} {regbl_transfer[regbl_parse][1]}\n")
-    except FileNotFoundError:
-        fatal_error("unable to open EIN database")
-"""

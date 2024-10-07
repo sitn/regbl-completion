@@ -78,23 +78,3 @@ def segment(input_path, output_path, equalize=False, invert=False, intermediate_
     result = iterate(black_mask, 2, 7.0/25.0)
     save_tmp_state(result, intermediate_states_path)
     cv2.imwrite(output_path, result)
-
-"""
-def segmentation_process_extract_building(clean_image, source_image, output_image, tolerance):
-    tracker = np.zeros_like(source_image, dtype=np.uint8)
-    output_image[:] = 255
-    rows, cols = clean_image.shape
-    for x in range(cols):
-        for y in range(rows):
-            if tracker[y, x] == 0 and clean_image[y, x] == 0:
-                component = lc_connect_get(clean_image, tracker, x, y, False)
-                if len(component) > 1:
-                    for u, v in component:
-                        lu, hu = max(u - tolerance, 0), min(u + tolerance, cols - 1)
-                        lv, hv = max(v - tolerance, 0), min(v + tolerance, rows - 1)
-                        for nx in range(lu, hu + 1):
-                            for ny in range(lv, hv + 1):
-                                if source_image[ny, nx] == 0:
-                                    output_image[ny, nx] = 0
-                        output_image[v, u] = 0
-"""
